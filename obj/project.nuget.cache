@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "MPTBSoGLujKPRbzZiLlP+33vfmsxj2fC6LJ8rCFp82X4HjteKflRjPewH62T2pKRxMlJnnI0wVhvueKcB1MufQ==",
+  "dgSpecHash": "jbTedwaYSdjLwAicL/Caef1Wb6fhyv8JkoSru4P4jV+s37/eY4frtQw9fsUnggo+OUjtyMSQKoEVB/9J390eEA==",
   "success": true,
-  "projectFilePath": "D:\\YoutubeParser\\YoutubeParser.csproj",
+  "projectFilePath": "D:\\Youtube-Game-Parser\\YoutubeParser.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\ahmed\\.nuget\\packages\\google.apis\\1.67.0\\google.apis.1.67.0.nupkg.sha512",
     "C:\\Users\\ahmed\\.nuget\\packages\\google.apis.auth\\1.67.0\\google.apis.auth.1.67.0.nupkg.sha512",

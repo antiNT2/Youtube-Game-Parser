@@ -311,11 +311,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\YoutubeParser\\YoutubeParser.csproj",
+      "projectUniqueName": "D:\\Youtube-Game-Parser\\YoutubeParser.csproj",
       "projectName": "YoutubeParser",
-      "projectPath": "D:\\YoutubeParser\\YoutubeParser.csproj",
+      "projectPath": "D:\\Youtube-Game-Parser\\YoutubeParser.csproj",
       "packagesPath": "C:\\Users\\ahmed\\.nuget\\packages\\",
-      "outputPath": "D:\\YoutubeParser\\obj\\",
+      "outputPath": "D:\\Youtube-Game-Parser\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\ahmed\\AppData\\Roaming\\NuGet\\NuGet.Config",

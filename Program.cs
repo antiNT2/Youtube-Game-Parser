@@ -1,5 +1,6 @@
 ﻿using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
+using Google.Apis.YouTube.v3.Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,23 +10,164 @@ namespace YoutubeParser
 {
     internal class Program
     {
-
+        static int numberOfVideos = 3;
         static void Main(string[] args)
         {
-            Console.WriteLine("Enter the name of the video game:");
-            string gameName = Console.ReadLine();
+            List<string>? games = GetListOfGamesFromFile();
 
-            if (gameName == "" || gameName == null)
+            List<ChannelWithVideos> channelsWithVideos = new List<ChannelWithVideos>();
+
+            if (games == null || !games.Any())
             {
-                Console.WriteLine("Please enter a valid game name.");
                 return;
             }
 
-            List<Video> channels = SearchYouTubeChannels(gameName);
+            // Get the number of videos to search for
+            Console.WriteLine($"Enter the number of videos to search for for each game (default is {numberOfVideos}):");
+            string numberOfVideosInput = Console.ReadLine();
+            if (!string.IsNullOrEmpty(numberOfVideosInput))
+            {
+                if (!int.TryParse(numberOfVideosInput, out numberOfVideos))
+                {
+                    Console.WriteLine("Invalid input. Using default value.");
+                }
+            }
+
+            Console.WriteLine($"Searching for videos ({numberOfVideos} each) on the following games: {string.Join(", ", games)}");
+            Console.WriteLine();
+
+            //DebugPrint();
+
+            //return;
+
+            foreach (var game in games)
+            {
+                Console.WriteLine($"Searching for videos on {game}...");
+                var videosOnCurrentGame = SearchVideosOnGame(game);
+
+                if (videosOnCurrentGame.Any())
+                {
+                    // Iterate through the dictionary and add the videos to the list of channels
+                    foreach (var channelVideosPair in videosOnCurrentGame)
+                    {
+                        var channel = channelVideosPair.Key;
+                        var videos = channelVideosPair.Value;
+
+                        var channelWithVideos = channelsWithVideos.FirstOrDefault(c => c.Channel.ChannelTitle == channel.ChannelTitle);
+
+                        if (channelWithVideos == null)
+                        {
+                            channelWithVideos = new ChannelWithVideos { Channel = channel };
+                            channelsWithVideos.Add(channelWithVideos);
+                        }
+
+                        channelWithVideos.Videos.Add(game, videos);
+                    }
+
+                    Console.WriteLine($"Found {videosOnCurrentGame.Count} channels with videos on {game}.");
+                }
+
+                Console.WriteLine();
+            }
+
+            Console.WriteLine("Channels with videos on the specified games:");
+
+            // Order channels by number of games they have made videos on and then by number of videos and then by view count
+            channelsWithVideos = channelsWithVideos.OrderByDescending(c => c.Videos.Count).ThenByDescending(c => c.Videos.Sum(v => v.Value.Count)).ToList();
+
+            foreach (var channelWithVideos in channelsWithVideos)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"{channelWithVideos.Channel}");
+                Console.ResetColor();
+
+                foreach (var gameVideosPair in channelWithVideos.Videos)
+                {
+                    var game = gameVideosPair.Key;
+                    var videos = gameVideosPair.Value;
+
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine($"{game} ({videos.Count} videos)");
+                    Console.ResetColor();
+
+                    // Order videos by view count
+                    videos = videos.OrderByDescending(v => v.ViewCount).ToList();
+
+                    foreach (var video in videos)
+                    {
+                        Console.WriteLine($"\t {video}");
+                    }
+
+                    Console.WriteLine();
+                }
+            }
+
+            WriteResultsToFile(channelsWithVideos);
+
+
+            Console.ReadLine();
+        }
+
+        static void WriteResultsToFile(List<ChannelWithVideos> channelsWithVideos)
+        {
+            string filePath = "_results.txt";
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(filePath))
+            {
+                foreach (var channelWithVideos in channelsWithVideos)
+                {
+                    file.WriteLine($"{channelWithVideos.Channel}");
+
+                    foreach (var gameVideosPair in channelWithVideos.Videos)
+                    {
+                        var game = gameVideosPair.Key;
+                        var videos = gameVideosPair.Value;
+
+                        file.WriteLine($"{game} ({videos.Count} videos)");
+
+                        foreach (var video in videos)
+                        {
+                            file.WriteLine($"\t {video}");
+                        }
+
+                        file.WriteLine();
+                    }
+                }
+            }
+
+            Console.WriteLine($"Results written to {filePath}");
+        }
+
+        static void DebugPrint()
+        {
+            string game = "Valorant";
+            List<Video> videos = new List<Video>();
+
+            videos.Add(new Video { Channel = new ChannelInfo { ChannelTitle = "Channel 1", SubscriberCount = 100 }, VideoLink = "https://www.youtube.com/watch?v=1", VideoTitle = "Video 1", ViewCount = 1000 });
+            videos.Add(new Video { Channel = new ChannelInfo { ChannelTitle = "Channel 1", SubscriberCount = 100 }, VideoLink = "https://www.youtube.com/watch?v=2", VideoTitle = "Video 2", ViewCount = 2000 });
+            videos.Add(new Video { Channel = new ChannelInfo { ChannelTitle = "Channel 1", SubscriberCount = 100 }, VideoLink = "https://www.youtube.com/watch?v=3", VideoTitle = "Video 3", ViewCount = 3000 });
+            videos.Add(new Video { Channel = new ChannelInfo { ChannelTitle = "Channel 1", SubscriberCount = 200 }, VideoLink = "https://www.youtube.com/watch?v=4", VideoTitle = "Video 4", ViewCount = 4000 });
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"{game} ({videos.Count} videos)");
+            Console.ResetColor();
+
+            // Order videos by view count
+            videos = videos.OrderByDescending(v => v.ViewCount).ToList();
+
+            foreach (var video in videos)
+            {
+                Console.WriteLine($"\t {video}");
+            }
+        }
+
+        static Dictionary<ChannelInfo, List<Video>> SearchVideosOnGame(string gameName)
+        {
+            List<Video> foundVideos = SearchYouTubeChannels(gameName);
 
             // Regroup videos by channel
-            Dictionary<Channel, List<Video>> channelVideos = new Dictionary<Channel, List<Video>>();
-            foreach (var video in channels)
+            Dictionary<ChannelInfo, List<Video>> channelVideos = new Dictionary<ChannelInfo, List<Video>>();
+            foreach (var video in foundVideos)
             {
                 if (!channelVideos.ContainsKey(video.Channel))
                 {
@@ -37,8 +179,8 @@ namespace YoutubeParser
 
             if (channelVideos.Any())
             {
-                Console.WriteLine("Channels that have made videos on " + gameName + " within the last 6 months:");
-                Console.WriteLine();
+                //Console.WriteLine("Channels that have made videos on " + gameName + " within the last 6 months:");
+                //Console.WriteLine();
 
                 // Order channels by subscriber count
                 channelVideos = channelVideos.OrderByDescending(c => c.Key.SubscriberCount).ToDictionary(c => c.Key, c => c.Value);
@@ -48,33 +190,34 @@ namespace YoutubeParser
                     var channel = channelVideosPair.Key;
                     var videos = channelVideosPair.Value;
 
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"Channel Name: {channel.ChannelTitle} ({channel.SubscriberCount} subs) ({videos.Count} videos)");
-                    Console.ResetColor();
+                    //Console.ForegroundColor = ConsoleColor.Green;
+                    //Console.WriteLine($"Channel Name: {channel.ChannelTitle} ({channel.SubscriberCount} subs) ({videos.Count} videos)");
+                    //Console.ResetColor();
 
                     // Order videos by view count
                     videos = videos.OrderByDescending(v => v.ViewCount).ToList();
 
                     foreach (var video in videos)
                     {
-                        Console.WriteLine($"{video.ViewCount} views | {video.VideoTitle} | {video.VideoLink}");
+                        //Console.WriteLine($"{video.ViewCount} views | {video.VideoTitle} | {video.VideoLink}");
                     }
 
-                    Console.WriteLine();
+                    //Console.WriteLine();
                 }
+
+                return channelVideos;
             }
             else
             {
                 Console.WriteLine("No channels found for the specified game within the last 6 months.");
+                return new Dictionary<ChannelInfo, List<Video>>();
             }
-
-            Console.ReadLine();
         }
 
         static List<Video> SearchYouTubeChannels(string gameName)
         {
             List<Video> videos = new List<Video>();
-            Dictionary<string, Channel> channels = new Dictionary<string, Channel>();
+            Dictionary<string, ChannelInfo> channels = new Dictionary<string, ChannelInfo>();
 
             var youtubeService = new YouTubeService(new BaseClientService.Initializer()
             {
@@ -84,7 +227,7 @@ namespace YoutubeParser
 
             var searchListRequest = youtubeService.Search.List("snippet");
             searchListRequest.Q = $"{gameName} game";
-            searchListRequest.MaxResults = 20; // You can adjust this number based on your needs
+            searchListRequest.MaxResults = numberOfVideos; // You can adjust this number based on your needs
             searchListRequest.Type = "video";
             searchListRequest.Order = SearchResource.ListRequest.OrderEnum.Relevance;
 
@@ -106,7 +249,7 @@ namespace YoutubeParser
                     var subscriberCount = GetChannelSubscriberCount(youtubeService, channelId);
                     var channelTitle = searchResult.Snippet.ChannelTitle;
 
-                    var channelToAdd = new Channel { ChannelTitle = channelTitle, SubscriberCount = subscriberCount };
+                    var channelToAdd = new ChannelInfo { ChannelTitle = channelTitle, ChannelId = channelId, SubscriberCount = subscriberCount };
                     channels.Add(channelId, channelToAdd);
                 }
 
@@ -137,20 +280,61 @@ namespace YoutubeParser
 
             return channelStatisticsResponse.Items?.FirstOrDefault()?.Statistics?.SubscriberCount ?? 0;
         }
+
+        static List<string>? GetListOfGamesFromFile()
+        {
+            List<string> games = new List<string>();
+
+            string gamesFilePath = "_games.txt";
+            if (!System.IO.File.Exists(gamesFilePath))
+            {
+                Console.WriteLine($"Games file not found at {gamesFilePath}");
+                return null;
+            }
+
+            string[] lines = System.IO.File.ReadAllLines(gamesFilePath);
+            games.AddRange(lines);
+
+            // Read the file and populate the list of games
+            return games;
+        }
     }
 
-    class Channel
+    class ChannelWithVideos
     {
-        public string ChannelTitle { get; set; }
+        public ChannelInfo Channel { get; set; }
+
+        /// <summary>
+        /// The key is the game name and the value is the list of videos for that game
+        /// </summary>
+        public Dictionary<string, List<Video>> Videos { get; set; } = new Dictionary<string, List<Video>>();
+    }
+
+    class ChannelInfo
+    {
+        public string ChannelTitle { get; set; } = string.Empty;
+        public string ChannelId { get; set; } = string.Empty;
         public ulong SubscriberCount { get; set; }
+
+        string ChannelLink => "https://www.youtube.com/channel/" + ChannelId;
+
+        public override string ToString()
+        {
+            return $"{ChannelTitle} ({SubscriberCount} subs) | {ChannelLink}";
+        }
     }
 
     class Video
     {
-        public Channel Channel { get; set; }
+        public ChannelInfo Channel { get; set; }
         public string VideoTitle { get; set; }
         public ulong ViewCount { get; set; }
         public string VideoLink { get; set; }
+
+        public override string ToString()
+        {
+            return $"{ViewCount} views | {VideoTitle} | {VideoLink}";
+        }
     }
 
 }
