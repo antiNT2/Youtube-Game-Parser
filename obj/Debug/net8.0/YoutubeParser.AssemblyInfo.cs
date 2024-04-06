@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("YoutubeParser")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6da542041c930b7f4724959a784b4538761553dc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a4e7697dc8efd2c565c63a82bdcf44a7cbca8d20")]
 [assembly: System.Reflection.AssemblyProductAttribute("YoutubeParser")]
 [assembly: System.Reflection.AssemblyTitleAttribute("YoutubeParser")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

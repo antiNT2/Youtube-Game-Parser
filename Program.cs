@@ -11,7 +11,7 @@ namespace YoutubeParser
     internal class Program
     {
         static int numberOfVideos = 3;
-        static readonly string apiKey = "AIzaSyA6zVm1u-lvY0xF19mY1nd9rd3b77npt8g";
+        static readonly string apiKey = "AIzaSyCHR9W7Vu0QHCXlBsYbcIvT12C49FDlcAU";
         static Dictionary<string, ChannelInfo> channels = new Dictionary<string, ChannelInfo>();
 
         static void Main(string[] args)
@@ -110,7 +110,7 @@ namespace YoutubeParser
                 }
             }
 
-            if(!channelsWithVideos.Any())
+            if (!channelsWithVideos.Any())
             {
                 Console.WriteLine("Nothing to write on files...");
             }
@@ -139,6 +139,23 @@ namespace YoutubeParser
         static void WriteResultsToFile(List<ChannelWithVideos> channelsWithVideos)
         {
             string filePath = "_results.txt";
+
+            // Wait till the file is not in use
+            while (true)
+            {
+                try
+                {
+                    using (System.IO.FileStream fs = new System.IO.FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.ReadWrite, System.IO.FileShare.None))
+                    {
+                        break;
+                    }
+                }
+                catch (System.IO.IOException)
+                {
+                    Console.WriteLine($"File {filePath} is in use. Waiting for 1 second...");
+                    System.Threading.Thread.Sleep(1000);
+                }
+            }
 
             using (System.IO.StreamWriter file = new System.IO.StreamWriter(filePath))
             {
@@ -169,6 +186,23 @@ namespace YoutubeParser
         static void WriteResultsToSpreadsheet(List<ChannelWithVideos> channelsWithVideos)
         {
             string filePath = "_results.csv";
+
+            // Wait till the file is not in use
+            while (true)
+            {
+                try
+                {
+                    using (System.IO.FileStream fs = new System.IO.FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.ReadWrite, System.IO.FileShare.None))
+                    {
+                        break;
+                    }
+                }
+                catch (System.IO.IOException)
+                {
+                    Console.WriteLine($"File {filePath} is in use. Waiting for 1 second...");
+                    System.Threading.Thread.Sleep(1000);
+                }
+            }
 
             using (System.IO.StreamWriter file = new System.IO.StreamWriter(filePath))
             {
@@ -269,12 +303,10 @@ namespace YoutubeParser
 
             try
             {
-
-
                 var youtubeService = new YouTubeService(new BaseClientService.Initializer()
                 {
                     ApiKey = apiKey,
-                    ApplicationName = "YouTubeGameSearch"
+                    ApplicationName = "YouTubeGameSearch",
                 });
 
                 var searchListRequest = youtubeService.Search.List("snippet");
@@ -282,6 +314,7 @@ namespace YoutubeParser
                 searchListRequest.MaxResults = numberOfVideos; // You can adjust this number based on your needs
                 searchListRequest.Type = "video";
                 searchListRequest.Order = SearchResource.ListRequest.OrderEnum.Relevance;
+                searchListRequest.Fields = "items(id/videoId,snippet/title,snippet/channelId,snippet/channelTitle)";
 
                 // Restrict to the last 6 months
                 searchListRequest.PublishedAfterDateTimeOffset = DateTime.UtcNow.AddMonths(-6);
