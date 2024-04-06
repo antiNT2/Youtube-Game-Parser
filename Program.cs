@@ -11,6 +11,8 @@ namespace YoutubeParser
     internal class Program
     {
         static int numberOfVideos = 3;
+        static Dictionary<string, ChannelInfo> channels = new Dictionary<string, ChannelInfo>();
+
         static void Main(string[] args)
         {
             List<string>? games = GetListOfGamesFromFile();
@@ -103,7 +105,7 @@ namespace YoutubeParser
             }
 
             WriteResultsToFile(channelsWithVideos);
-
+            WriteResultsToSpreadsheet(channelsWithVideos);
 
             Console.ReadLine();
         }
@@ -137,6 +139,27 @@ namespace YoutubeParser
 
             Console.WriteLine($"Results written to {filePath}");
         }
+
+        static void WriteResultsToSpreadsheet(List<ChannelWithVideos> channelsWithVideos)
+        {
+            string filePath = "_results.csv";
+
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(filePath))
+            {
+                file.WriteLine("Number of Subs, Name, Link, Covered Games");
+
+                foreach (var channelWithVideos in channelsWithVideos)
+                {
+                    // We want the covered games to be in one cell with the name of the game and the number of videos in parentheses
+                    string coveredGames = string.Join(" | ", channelWithVideos.Videos.Select(v => $"{v.Key} ({v.Value.Count})"));
+
+                    file.WriteLine($"{channelWithVideos.Channel.SubscriberCount}, {channelWithVideos.Channel.ChannelTitle}, {channelWithVideos.Channel.ChannelLink}, {coveredGames}");
+                }
+            }
+
+            Console.WriteLine($"Results written to {filePath}");
+        }
+
 
         static void DebugPrint()
         {
@@ -217,7 +240,6 @@ namespace YoutubeParser
         static List<Video> SearchYouTubeChannels(string gameName)
         {
             List<Video> videos = new List<Video>();
-            Dictionary<string, ChannelInfo> channels = new Dictionary<string, ChannelInfo>();
 
             var youtubeService = new YouTubeService(new BaseClientService.Initializer()
             {
@@ -316,7 +338,7 @@ namespace YoutubeParser
         public string ChannelId { get; set; } = string.Empty;
         public ulong SubscriberCount { get; set; }
 
-        string ChannelLink => "https://www.youtube.com/channel/" + ChannelId;
+        public string ChannelLink => "https://www.youtube.com/channel/" + ChannelId;
 
         public override string ToString()
         {
