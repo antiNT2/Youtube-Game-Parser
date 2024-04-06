@@ -11,6 +11,7 @@ namespace YoutubeParser
     internal class Program
     {
         static int numberOfVideos = 3;
+        static readonly string apiKey = "AIzaSyA6zVm1u-lvY0xF19mY1nd9rd3b77npt8g";
         static Dictionary<string, ChannelInfo> channels = new Dictionary<string, ChannelInfo>();
 
         static void Main(string[] args)
@@ -74,6 +75,11 @@ namespace YoutubeParser
 
             Console.WriteLine("Channels with videos on the specified games:");
 
+            if (!channelsWithVideos.Any())
+            {
+                Console.WriteLine("No channels found for the specified games within the last 6 months...");
+            }
+
             // Order channels by number of games they have made videos on and then by number of videos and then by view count
             channelsWithVideos = channelsWithVideos.OrderByDescending(c => c.Videos.Count).ThenByDescending(c => c.Videos.Sum(v => v.Value.Count)).ToList();
 
@@ -104,8 +110,28 @@ namespace YoutubeParser
                 }
             }
 
-            WriteResultsToFile(channelsWithVideos);
-            WriteResultsToSpreadsheet(channelsWithVideos);
+            if(!channelsWithVideos.Any())
+            {
+                Console.WriteLine("Nothing to write on files...");
+            }
+            else
+            {
+                try
+                {
+                    WriteResultsToFile(channelsWithVideos);
+                    WriteResultsToSpreadsheet(channelsWithVideos);
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Error writing results: {ex.Message}");
+                    Console.ResetColor();
+                }
+            }
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("COMPLETE Press any key to exit...");
+            Console.ResetColor();
 
             Console.ReadLine();
         }
@@ -241,43 +267,64 @@ namespace YoutubeParser
         {
             List<Video> videos = new List<Video>();
 
-            var youtubeService = new YouTubeService(new BaseClientService.Initializer()
+            try
             {
-                ApiKey = "AIzaSyDswqIAkQzCli2N3BtU34PWwhL6qxXeYBI",
-                ApplicationName = "YouTubeGameSearch"
-            });
 
-            var searchListRequest = youtubeService.Search.List("snippet");
-            searchListRequest.Q = $"{gameName} game";
-            searchListRequest.MaxResults = numberOfVideos; // You can adjust this number based on your needs
-            searchListRequest.Type = "video";
-            searchListRequest.Order = SearchResource.ListRequest.OrderEnum.Relevance;
 
-            // Restrict to the last 6 months
-            searchListRequest.PublishedAfterDateTimeOffset = DateTime.UtcNow.AddMonths(-6);
-
-            var searchListResponse = searchListRequest.Execute();
-
-            foreach (var searchResult in searchListResponse.Items)
-            {
-                var videoId = searchResult.Id.VideoId;
-                var channelId = searchResult.Snippet.ChannelId;
-                var videoLink = "https://www.youtube.com/watch?v=" + videoId;
-                var videoTitle = searchResult.Snippet.Title;
-                var viewCount = GetVideoViewCount(youtubeService, videoId);
-
-                if (!channels.ContainsKey(channelId))
+                var youtubeService = new YouTubeService(new BaseClientService.Initializer()
                 {
-                    var subscriberCount = GetChannelSubscriberCount(youtubeService, channelId);
-                    var channelTitle = searchResult.Snippet.ChannelTitle;
+                    ApiKey = apiKey,
+                    ApplicationName = "YouTubeGameSearch"
+                });
 
-                    var channelToAdd = new ChannelInfo { ChannelTitle = channelTitle, ChannelId = channelId, SubscriberCount = subscriberCount };
-                    channels.Add(channelId, channelToAdd);
+                var searchListRequest = youtubeService.Search.List("snippet");
+                searchListRequest.Q = $"{gameName} game";
+                searchListRequest.MaxResults = numberOfVideos; // You can adjust this number based on your needs
+                searchListRequest.Type = "video";
+                searchListRequest.Order = SearchResource.ListRequest.OrderEnum.Relevance;
+
+                // Restrict to the last 6 months
+                searchListRequest.PublishedAfterDateTimeOffset = DateTime.UtcNow.AddMonths(-6);
+
+                var searchListResponse = searchListRequest.Execute();
+
+                foreach (var searchResult in searchListResponse.Items)
+                {
+                    try
+                    {
+                        var videoId = searchResult.Id.VideoId;
+                        var channelId = searchResult.Snippet.ChannelId;
+                        var videoLink = "https://www.youtube.com/watch?v=" + videoId;
+                        var videoTitle = searchResult.Snippet.Title;
+                        var viewCount = GetVideoViewCount(youtubeService, videoId);
+
+                        if (!channels.ContainsKey(channelId))
+                        {
+                            var subscriberCount = GetChannelSubscriberCount(youtubeService, channelId);
+                            var channelTitle = searchResult.Snippet.ChannelTitle;
+
+                            var channelToAdd = new ChannelInfo { ChannelTitle = channelTitle, ChannelId = channelId, SubscriberCount = subscriberCount };
+                            channels.Add(channelId, channelToAdd);
+                        }
+
+                        var channel = channels[channelId];
+
+                        videos.Add(new Video { Channel = channel, VideoLink = videoLink, VideoTitle = videoTitle, ViewCount = viewCount });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"Error processing video: {ex.Message}");
+                        Console.ResetColor();
+                        throw;
+                    }
                 }
-
-                var channel = channels[channelId];
-
-                videos.Add(new Video { Channel = channel, VideoLink = videoLink, VideoTitle = videoTitle, ViewCount = viewCount });
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error searching for videos: {ex.Message}");
+                Console.ResetColor();
             }
 
             return videos;
